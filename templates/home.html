@@ -27,10 +27,25 @@
                             </button>
                             <ul class="dropdown-menu">
                                 {% for task in tasks %}
-                                     <li><a class="dropdown-item" href="#" onclick="updateDropdown('{{ task['name'] }}', {{hour}}, {{day}}, '{{task['color']}}', {{task['task_id']}},true)">{{ task['name'] }}</a></li>
+                                    {% if task['name'] != '___NULL___'%}
+                                        <li><a class="dropdown-item" href="#" onclick="updateDropdown('{{ task['name'] }}', {{hour}}, {{day}}, '{{task['color']}}', {{task['task_id']}},true)">{{ task['name'] }}</a></li>
+                                    {% else %}
+                                    <li><a class="dropdown-item" href="#" onclick="updateDropdown('', {{hour}}, {{day}}, 'grey', {{task['task_id']}},true)">Clear</a></li>
+                                    {% endif%}
                                 {% endfor %}
+                                
                             </ul>
-                          </div>
+                            
+                        </div>
+                        <form id="progress_form_{{hour}}_{{day}}" action="/update_progress" method="post">
+                            <input type="hidden" name="hour" value="{{hour}}">
+                            <input type="hidden" name="day" value="{{day}}">
+                            <input type="hidden" name="radio_name" value="progress_{{hour}}_{{day}}">
+                            <input type="radio" name="progress_{{hour}}_{{day}}" value="not_started" onchange="submit_progress_form({{hour}}, {{day}})">
+                            <input type="radio" name="progress_{{hour}}_{{day}}" value="started" onchange="submit_progress_form({{hour}}, {{day}})">
+                            <input type="radio" name="progress_{{hour}}_{{day}}" value="done" onchange="submit_progress_form({{hour}}, {{day}})">
+                        </form>
+                        
                     </td>
                 {% endfor %}
 
@@ -66,7 +81,7 @@
         <label style="padding-left: 3px" for="end">End (including)</label>
         <select name = "end">
             {% for hour in range(0, 24) %}
-                <option value = "{{hour}}">{{hour}}:00</option>
+                    <option value = "{{hour}}">{{hour}}:00</option>
             {% endfor %}
         </select>
     </div>
@@ -74,7 +89,11 @@
         <label style="padding-left: 3px" for="task">Task</label>
         <select name = "task_id">
             {% for task in tasks %}
-                <option value = "{{task['task_id']}}">{{task['name']}}</option>
+                {% if task['name'] != '___NULL___'%}
+                    <option value = "{{task['task_id']}}">{{task['name']}}</option>
+                {% else %}
+                    <option value = "{{task['task_id']}}">Clear</option>
+                {% endif %}
             {% endfor %}
         </select>
     </div>
@@ -83,7 +102,14 @@
 
 
     <h2 style="padding-top: 10px" >Goals</h2>
-    
+        <table class="table">
+            <tr>
+                <th>Free Hours</th>
+            </tr>
+            <tr>
+                <td id="free_hours"></td>
+            </tr>
+        </table>
         <table class="table">
             <tr>
                 <th>Task</th>
@@ -91,7 +117,7 @@
             </tr>
 
             {% for task in tasks %}
-                {% if task['fixed'] == "not_fixed" %}
+                {% if task['fixed'] == "not_fixed" and task['name'] != "___NULL___"%}
                 <tr>
                     <form id="goal_form_{{task['task_id']}}" onsubmit="return scramble('#goal_form_{{task['task_id']}}')">
                         <td>{{ task['name'] }}</td>

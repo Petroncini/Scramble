@@ -10,25 +10,27 @@
             <th>Change</th>
         </tr>
     {% for task in tasks %}
-    <tr>
-        <form action="/tasks" method="post">
-            <td>
-                <select name = "task_fixed">
-                    
-                    <option value = "fixed" {% if task['fixed'] == "fixed" %}selected{% endif %}>Fixed</option>
-                    <option value = "not_fixed" {% if task['fixed'] == "not_fixed" %}selected{% endif %}>Not Fixed</option>
-                    
-                </select>
-            </td>
-            <td><input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="task_name" value="{{task['name']}}" type="text"></td>
-            <td><input type="color" class="form-control form-control-color mx-auto" id="exampleColorInput" name="task_color" value="{{task['color']}}" title="Choose your color"></td>
-            <input type="hidden" name="task_id" value="{{ task['task_id'] }}">
-            <td>
-                <button  class="btn btn-primary" name="action" value="edit" type="submit">Edit task</button>
-                <button  class="btn btn-primary" name="action" value="delete" type="submit" style="background-color: #d42013">Delete task</button>
-            </td>
-        </form>
-    </tr>
+        {% if task['name'] != '___NULL___'%}
+        <tr>
+            <form action="/tasks" method="post">
+                <td>
+                    <select name = "task_fixed">
+                        
+                        <option value = "fixed" {% if task['fixed'] == "fixed" %}selected{% endif %}>Fixed</option>
+                        <option value = "not_fixed" {% if task['fixed'] == "not_fixed" %}selected{% endif %}>Not Fixed</option>
+                        
+                    </select>
+                </td>
+                <td><input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="task_name" value="{{task['name']}}" type="text"></td>
+                <td><input type="color" class="form-control form-control-color mx-auto" id="exampleColorInput" name="task_color" value="{{task['color']}}" title="Choose your color"></td>
+                <input type="hidden" name="task_id" value="{{ task['task_id'] }}">
+                <td>
+                    <button  class="btn btn-primary" name="action" value="edit" type="submit">Edit task</button>
+                    <button  class="btn btn-primary" name="action" value="delete" type="submit" style="background-color: #d42013">Delete task</button>
+                </td>
+            </form>
+        </tr>
+        {% endif %}
     {% endfor %}
     <tr>
         <form action="/tasks" method="post">

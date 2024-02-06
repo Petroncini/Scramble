@@ -114,6 +114,8 @@ def register():
         db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, hash)
         new_user = db.execute("SELECT id FROM users WHERE username = ?", username)
 
+        db.execute("INSERT INTO tasks (user_id, name, color) VALUES (?, '___NULL___', '#000000')", new_user[0]['id'])
+
         new_id = new_user[0]['id']
         values = ""
         for day in range(1, 8):
@@ -186,11 +188,12 @@ def tasks():
 def get_tasks():
     
     user_tasks = db.execute("SELECT * FROM tasks WHERE user_id = ?", session['user_id'])
-    tasks = [{}, {}] # [0] name, [1] color
+    tasks = [{}, {}, {}] # [0] name, [1] color
 
     for row in user_tasks:
         tasks[0][row['task_id']] = row['name']
         tasks[1][row['task_id']] = row['color']
+        tasks[2][row['task_id']] = row['fixed']
 
     
     return jsonify(tasks)
@@ -203,7 +206,7 @@ def get_schedule():
 
     
     days, hours = 7, 24
-    schedule = [[0 for x in range(days)] for y in range(hours)] 
+    schedule = [[{'task_id': None, 'progress': "not_started"} for x in range(days)] for y in range(hours)] 
 
     # print(schedule)
     cell = 0
@@ -212,7 +215,8 @@ def get_schedule():
         for hour in range(0, 24):
             # print(f"day: {day}, hour: {hour}, cell: {cell}")
             # print(f"Schedule| day: {user_schedule[cell]['day']}, hour: {user_schedule[cell]['hour']}")
-            schedule[hour][day] = user_schedule[cell]['task_id']
+            schedule[hour][day]['task_id'] = user_schedule[cell]['task_id']
+            schedule[hour][day]['progress'] = user_schedule[cell]['progress']
             cell += 1
 
     return jsonify(schedule)
@@ -226,11 +230,19 @@ def update_schedule():
     task_id = request.json.get("task_id")
     hour = request.json.get("hour")
     day = request.json.get("day")
-    
+    print(task_id)
+
+    task = db.execute("SELECT fixed FROM tasks WHERE task_id = ?", task_id)
+    task_fixed = task[0]['fixed']
+    print(task_fixed)
 
     # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AMD hour = {hour} AND day = {day}")
+    if task_fixed == "fixed":
+        db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
     
-    db.execute("UPDATE schedule SET task_id = ? WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
+    else:
+        db.execute("UPDATE schedule SET task_id = ?, progress = 'not_started' WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
+
     return ["Ok"]
 
 @app.route("/bulk_set", methods=["POST"])
@@ -241,14 +253,18 @@ def bulk_set():
     end = request.form.get("end")
     task_id = request.form.get("task_id")
 
+
     if not task_id:
         flash("Task required")
         return redirect("/")
 
-    if not start or not end or int(end) <= int(start):
+    if not start or not end or int(end) < int(start):
         print("Incorrect time")
         flash("Incorrect time")
         return redirect("/")
+    
+    task = db.execute("SELECT fixed FROM tasks WHERE task_id = ?", task_id)
+    task_fixed = task[0]['fixed']
 
     days = {}
     for i in range(1, 8):
@@ -262,16 +278,45 @@ def bulk_set():
     start = int(start)
     end = int(end)
 
+    if task_fixed == "not_fixed":
+        for day in range(1, 8):
+            if start != end:
+                for hour in range(start, end + 1):
+                    if days[day] == 1:
+                        # print(f"Day: {day}, Hour: {hour}")
+                        # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AND day = {day} and hour = {hour}")
+                        db.execute("UPDATE schedule SET task_id = ? WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, hour)
+            else:
 
-    for day in range(1, 8):
-        for hour in range(start, end + 1):
-            if days[day] == 1:
-                # print(f"Day: {day}, Hour: {hour}")
-                # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AND day = {day} and hour = {hour}")
-                db.execute("UPDATE schedule SET task_id = ? WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, hour)
-    
+                db.execute("UPDATE schedule SET task_id = ? WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, start)
+    else:
+        for day in range(1, 8):
+            if start != end:
+                for hour in range(start, end + 1):
+                    if days[day] == 1:
+                        # print(f"Day: {day}, Hour: {hour}")
+                        # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AND day = {day} and hour = {hour}")
+                        db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, hour)
+            else:
+
+                db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, start)
+
 
     return redirect("/")
+
+@app.route("/update_progress", methods=["POST"])
+@login_required
+def update_progress():
+    hour = request.form.get("hour")
+    day = request.form.get("day")
+    radio_name = request.form.get("radio_name")
+    progress = request.form.get(radio_name)
+
+    print(f"Hour: {hour}, day: {day}, radio_name: {radio_name}, progress: {progress}")
+
+    db.execute("UPDATE schedule SET progress = ? WHERE user_id = ? AND hour = ? AND day = ?", progress, session['user_id'], hour, day)
+
+    return '', 204
 
 @app.route("/logout")
 def logout():

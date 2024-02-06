@@ -1,0 +1,21 @@
+data visualization options:
+    Whole Week Overview:
+        Chart Type: Bar chart or line chart.
+        Data Aggregation: Sum of productivity for each day of the week.
+        Timeframe: Specify the week.
+        Additional Options: Filter by task.
+        Representation: Lines showing the number of "started" tasks and "done" tasks, along with the percentage of tasks done relative to the daily goal.
+
+    Day-by-Day Breakdown:
+        Chart Type: Line chart or bar chart.
+        Data Aggregation: Productivity for each hour of the selected day.
+        Timeframe: Specify the day.
+        Additional Options: Filter by task.
+        Representation: Lines showing the number of "started" tasks and "done" tasks, along with the percentage of tasks done relative to the daily goal.
+
+    Daily History Overview:
+        Chart Type: Line chart.
+        Data Aggregation: Daily sum of productivity over the entire historical period.
+        Timeframe: Historical data, day by day.
+        Additional Options: Filter by task.
+        Representation: Lines showing the number of "started" tasks and "done" tasks, along with the percentage of tasks done relative to the daily goal.

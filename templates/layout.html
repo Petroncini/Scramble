@@ -15,8 +15,21 @@
         <script>
             let tasks_name
             let tasks_color
+            let tasks_fixed
             let schedule
             let empties = []
+            let free_hours = 0
+
+            function submit_progress_form(hour, day) {
+                form_id = `progress_form_${hour}_${day}`
+                
+                if(schedule[Number(hour)][Number(day) - 1]['task_id'] != null && tasks_fixed[schedule[hour][day - 1]['task_id']] == "not_fixed") {
+                    
+                    document.getElementById(form_id).submit();
+                } else if (tasks_fixed[schedule[hour][day - 1]['task_id']] == "fixed"){
+                    update_progress_radio(hour, day, schedule[hour][day - 1]['progress'])
+                }
+            }
 
             function hexToRgb(hex) {
                 // Remove the hash if it exists
@@ -40,7 +53,7 @@
                     
                     random_element = empties[random_index]
                     
-                    empties.splice[random_index, 1]
+                    empties.splice(random_index, 1)
 
                     return random_element
                 } else {
@@ -68,27 +81,27 @@
 
                 for (let i = 0; i < 24; i++){
                     for (let j = 1; j < 8; j++){
-                        if (schedule[i][j - 1] == task_id){
+                        if (schedule[i][j - 1]['task_id'] == task_id){
                             task_count += 1
                         }
                     }
                 }
                 if (task_count >= goal){
-                    return true
-                }
-                
-                // get coordinates of an empty
-                
-                coords = select_random_empty()
-                console.log(coords['hour'])
-
-                // now the magic happens
-
-                if (coords = null){
+                    console.log("Goal reached")
                     return false
                 }
+                
+                for (let i = 0; i < (goal - task_count); i++){
+                    // get coordinates of an empty
+                    
+                    coords = select_random_empty()
+                    console.log(coords)
+                    schedule[coords['hour']][coords['day'] - 1]['task_id'] = task_id
+                    // now the magic happens
+                    updateDropdown(name, coords['hour'], coords['day'], color, task_id, true)
+                }
 
-                console.log(coords)
+                console.log("Scramble successfull")
                 return false
             }
 
@@ -96,6 +109,23 @@
                 const [r, g, b] = hexToRgb(hexColor);
                 const brightness = (r * 299 + g * 587 + b * 114) / 1000;
                 return brightness;
+            }
+            function update_progress_radio(hour, day, progress){
+                radio = document.querySelector(`input[name="progress_${hour}_${day}"][value="${progress}"]`);
+                if(radio){
+                    radio.checked = true
+                }
+                
+            }
+
+            function clear_progress_radio(hour, day){
+                radio_not_started = document.querySelector(`input[name="progress_${hour}_${day}"][value="not_started"]`);
+                radio_started = document.querySelector(`input[name="progress_${hour}_${day}"][value="started"]`);
+                radio_done = document.querySelector(`input[name="progress_${hour}_${day}"][value="done"]`);
+                radio_not_started.checked = false
+                radio_started.checked = false
+                radio_done.checked = false
+                
             }
 
             function updateDropdown(selectedValue, hour, day, color, task_id, updating) {
@@ -105,6 +135,7 @@
               button.innerHTML = selectedValue
               button.style.backgroundColor = color
               brightness = calculateBrightness(color)
+              
 
               if (brightness > 128) {
                 // Light background, switch to dark text
@@ -112,7 +143,18 @@
               }
 
               if (updating){
+            
+
                 (async() => {
+                    free_hours -= 1
+                    document.querySelector("#free_hours").innerHTML = free_hours
+
+                    if(tasks_name[task_id] == "___NULL___"){
+                        clear_progress_radio(hour, day)
+                    } else {
+                        update_progress_radio(hour, day, "done")
+                    }
+                    
                     const response = await fetch('/update_schedule', {
                     method: 'POST',
                     headers: {
@@ -152,27 +194,31 @@
                 tasks = await fetchTasks();
                 tasks_name = tasks[0]
                 tasks_color = tasks[1]
+                tasks_fixed = tasks[2]
 
                 schedule = await fetchSchedule()
                 
                 for (let i = 0; i < 24; i++){
                     for (let j = 1; j < 8; j++){
                         
-                        if (schedule[i][j - 1] != null){
+                        if (schedule[i][j - 1]['task_id'] != null && tasks_name[schedule[i][j - 1]['task_id']] != "___NULL___"){
 
-                            updateDropdown(tasks_name[schedule[i][j - 1]], i, j, tasks_color[schedule[i][j - 1]], schedule[i][j - 1], false)
+                            updateDropdown(tasks_name[schedule[i][j - 1]['task_id']], i, j, tasks_color[schedule[i][j - 1]['task_id']], schedule[i][j - 1]['task_id'], false)
+                            update_progress_radio(i, j, schedule[i][j - 1]['progress'])
                         }
                         else {
                             // add block to empties
+                            free_hours += 1
                             empties.push({
                                 'hour': i,
                                 'day': j
                             })
-                            updateDropdown("", i, j, "grey", schedule[i][j - 1], false)
+                            updateDropdown("", i, j, "grey", schedule[i][j - 1]['task_id'], false)
                         }
                     }
                 }
 
+                document.querySelector("#free_hours").innerHTML = free_hours
 
             });
 
