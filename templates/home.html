@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h2>Schedule</h2>
+
+    <table class="table">
+        <tr>
+            <th>Time</th>
+            <th>Sunday</th>
+            <th>Monday</th>
+            <th>Tuesday</th>
+            <th>Wednesday</th>
+            <th>Thursday</th>
+            <th>Friday</th>
+            <th>Saturday</th>
+        </tr>
+        {% if True %}
+            {% for hour in range(0, 24) %}
+            <tr>
+                <td>{{ hour }}:00</td>
+
+                {% for day in range(1, 8) %}
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle outlined-text" type="button" id="drop_{{hour}}_{{day}}" data-bs-toggle="dropdown" aria-expanded="false">
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% for task in tasks %}
+                                     <li><a class="dropdown-item" href="#" onclick="updateDropdown('{{ task['name'] }}', {{hour}}, {{day}}, '{{task['color']}}', {{task['task_id']}},true)">{{ task['name'] }}</a></li>
+                                {% endfor %}
+                            </ul>
+                          </div>
+                    </td>
+                {% endfor %}
+
+            </tr>
+            {% endfor %}
+        {% endif %}
+    </table>
+
+    <h2 style="padding-top: 10px" >Bulk set</h2>
+
+    {% set day_names = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] %}
+
+    <div style="padding-top: 5px">
+        {% for day in range(1, 8) %}
+            <label style="padding-right: 3px" for="day_{{ day }}">{{ day_names[day-1] }}</label>
+        {% endfor %}
+    </div>
+    <form action="/bulk_set" method="post">
+    <div>
+        
+        {% for day in range(1, 8) %}
+            <input id="day_{{ day }}" name="day_{{ day }}" type="checkbox">
+        {% endfor %}
+    </div>
+
+    <div style="padding-top: 5px">
+        <label style="padding-right: 3px" for="start">Start</label>
+        <select name = "start">
+            {% for hour in range(0, 24) %}
+                <option value = "{{hour}}">{{hour}}:00</option>
+            {% endfor %}
+        </select>
+        <label style="padding-left: 3px" for="end">End (including)</label>
+        <select name = "end">
+            {% for hour in range(0, 24) %}
+                <option value = "{{hour}}">{{hour}}:00</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="padding-top: 5px; padding-bottom: 5px">
+        <label style="padding-left: 3px" for="task">Task</label>
+        <select name = "task_id">
+            {% for task in tasks %}
+                <option value = "{{task['task_id']}}">{{task['name']}}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button style="padding-top: 5px"  class="btn btn-primary" type="submit">Bulk set</button>
+    </form>
+
+
+    <h2 style="padding-top: 10px" >Goals</h2>
+    
+        <table class="table">
+            <tr>
+                <th>Task</th>
+                <th>Hours</th>
+            </tr>
+
+            {% for task in tasks %}
+                {% if task['fixed'] == "not_fixed" %}
+                <tr>
+                    <form id="goal_form_{{task['task_id']}}" onsubmit="return scramble('#goal_form_{{task['task_id']}}')">
+                        <td>{{ task['name'] }}</td>
+                        <td>
+                            <input type="hidden" name="task_id" value="{{task['task_id']}}">
+                            <input type="hidden" name="color" value="{{task['color']}}">
+                            <input type="hidden" name="name" value="{{task['name']}}">
+                            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="goal" type="number">
+                        </td>
+                        <td><button  class="btn btn-primary" type="submit">Scramble</button></td>
+                    </form>
+                </tr>
+                {% endif %}
+            {% endfor %}
+        </table>
+        
+    
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p id="error">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+
+{% endblock %}

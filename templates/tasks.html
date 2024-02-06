@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+
+{% block main %}
+    <title>Tasks</title>
+    <table class="table">
+        <tr>
+            <th>Fixed</th>
+            <th>Task</th>
+            <th>Color</th>
+            <th>Change</th>
+        </tr>
+    {% for task in tasks %}
+    <tr>
+        <form action="/tasks" method="post">
+            <td>
+                <select name = "task_fixed">
+                    
+                    <option value = "fixed" {% if task['fixed'] == "fixed" %}selected{% endif %}>Fixed</option>
+                    <option value = "not_fixed" {% if task['fixed'] == "not_fixed" %}selected{% endif %}>Not Fixed</option>
+                    
+                </select>
+            </td>
+            <td><input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="task_name" value="{{task['name']}}" type="text"></td>
+            <td><input type="color" class="form-control form-control-color mx-auto" id="exampleColorInput" name="task_color" value="{{task['color']}}" title="Choose your color"></td>
+            <input type="hidden" name="task_id" value="{{ task['task_id'] }}">
+            <td>
+                <button  class="btn btn-primary" name="action" value="edit" type="submit">Edit task</button>
+                <button  class="btn btn-primary" name="action" value="delete" type="submit" style="background-color: #d42013">Delete task</button>
+            </td>
+        </form>
+    </tr>
+    {% endfor %}
+    <tr>
+        <form action="/tasks" method="post">
+            <td>
+                <select name = "task_fixed">
+                    
+                    <option value = "fixed" >Fixed</option>
+                    <option value = "not_fixed" selected>Not Fixed</option>
+                    
+                </select>
+            </td>
+            <td><input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="task_name" placeholder="Task" type="text"></td>
+            <td><input type="color" class="form-control form-control-color mx-auto" id="exampleColorInput" name="task_color" value="#61a0ff" title="Choose your color"></td>
+            <td><button  class="btn btn-primary" name="action" value="add" type="submit">Add task</button></td>
+        </form>
+    </tr>
+    </table>
+
+
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p id="error">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+{% endblock %}
