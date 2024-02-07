@@ -4,7 +4,7 @@
     <title>Tasks</title>
     <table class="table">
         <tr>
-            <th>Fixed</th>
+            <th>Goal / Routine</th>
             <th>Task</th>
             <th>Color</th>
             <th>Change</th>
@@ -16,8 +16,8 @@
                 <td>
                     <select name = "task_fixed">
                         
-                        <option value = "fixed" {% if task['fixed'] == "fixed" %}selected{% endif %}>Fixed</option>
-                        <option value = "not_fixed" {% if task['fixed'] == "not_fixed" %}selected{% endif %}>Not Fixed</option>
+                        <option value = "fixed" {% if task['fixed'] == "fixed" %}selected{% endif %}>Routine</option>
+                        <option value = "not_fixed" {% if task['fixed'] == "not_fixed" %}selected{% endif %}>Goal</option>
                         
                     </select>
                 </td>
@@ -37,8 +37,8 @@
             <td>
                 <select name = "task_fixed">
                     
-                    <option value = "fixed" >Fixed</option>
-                    <option value = "not_fixed" selected>Not Fixed</option>
+                    <option value = "fixed" >Routine</option>
+                    <option value = "not_fixed" selected>Goal</option>
                     
                 </select>
             </td>

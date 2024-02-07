@@ -5,3 +5,7 @@
 .light-background {
     color: black;  /* Text color */
 }
+
+.dark-background {
+    color: white;  /* Text color */
+}

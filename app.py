@@ -1,11 +1,14 @@
 import os
-
+import io
+from datetime import datetime
 from cs50 import SQL
-from flask import Flask, flash, redirect, render_template, request, session, flash, jsonify
+from flask import Flask, flash, redirect, render_template, request, session, flash, jsonify, send_file
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime
 from helpers import apology, login_required, lookup, usd
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Configure application
 app = Flask(__name__)
@@ -317,6 +320,316 @@ def update_progress():
     db.execute("UPDATE schedule SET progress = ? WHERE user_id = ? AND hour = ? AND day = ?", progress, session['user_id'], hour, day)
 
     return '', 204
+
+@app.route("/metrics")
+@login_required
+def metrics():
+    if request.method == "GET":
+        return render_template("metrics.html")
+    
+
+@app.route("/check_date_overlap", methods=["POST"])
+@login_required
+def check_date_overlap():
+    day = int(request.json['day'])
+    month = int(request.json['month'])
+    year = int(request.json['year'])
+    weekday = int(request.json['weekday'])
+
+    if weekday != 6:
+        return jsonify([1])
+
+    
+
+    date = datetime(year, month, day)
+
+    # Get the ISO week number
+    iso_week_number = date.isocalendar()[1] + 1
+
+    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
+    
+    if len(weeks) != 0:
+        return jsonify([2])
+
+    return jsonify([0])
+
+@app.route("/upload_week_data", methods=["POST"])
+@login_required
+def upload_week_data():
+    sunday_date = request.form.get("sunday_date")
+    overwrite = request.form.get("overwrite")
+
+    if not overwrite:
+        flash("Overwrite not enabled")
+        return redirect("/metrics")
+
+    date_object = datetime.strptime(sunday_date, "%Y-%m-%d")
+    year = date_object.year
+    week_number = date_object.isocalendar()[1] + 1
+
+    current_schedule = db.execute("SELECT * FROM schedule WHERE user_id = ?", session['user_id'])
+    user_tasks = db.execute("SELECT task_id, fixed FROM tasks WHERE user_id = ?", session['user_id'])
+
+    fixed_tasks = {}
+
+    for task in user_tasks:
+        fixed_tasks[task['task_id']] = task['fixed']
+    
+    
+    db.execute("DELETE FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, week_number)
+
+    values = ""
+
+    for row in current_schedule:
+        if row['task_id'] != None:
+            if fixed_tasks[row['task_id']] == "not_fixed":
+                values += f"('{session['user_id']}', '{year}', '{week_number}','{row['day']}', '{row['hour']}', '{row['task_id']}', '{row['progress']}'),"
+                
+    values = values[:-1] + ";"
+    db.execute("INSERT INTO productivity (user_id, year, week, day, hour, task_id, progress) VALUES " + values)
+    return redirect("/metrics")
+
+@app.route("/visualize_week_overview", methods=["POST"])
+@login_required
+def visualize_week_overview():
+    print("Request received")
+
+    day = int(request.json['day'])
+    month = int(request.json['month'])
+    year = int(request.json['year'])
+    task_id = int(request.json['task_id'])
+    
+
+    date = datetime(year, month, day)
+
+    # Get the ISO week number
+    week = date.isocalendar()[1] + 1
+
+    print(f"Day: {day}, Month: {month}, Year: {year}, Week: {week}")
+
+    if task_id == 0:
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, week)
+    else:
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND task_id = ", session['user_id'], year, week, task_id)
+    
+
+    weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+    daily_sum = []
+    for i in range(0, 7):
+        daily_sum.append({})
+        daily_sum[i]['not_started'] = 0
+        daily_sum[i]['started'] = 0
+        daily_sum[i]['done'] = 0
+        daily_sum[i]['goal'] = 0
+
+    
+    for row in data:
+        if row['progress'] == "not_started":
+            daily_sum[row['day'] - 1]["not_started"] += 1
+
+        elif row['progress'] == "started":
+            daily_sum[row['day'] - 1]["started"] += 1
+
+        elif row['progress'] == "done":
+            daily_sum[row['day'] - 1]["done"] += 1
+
+        daily_sum[row['day'] - 1]["goal"] += 1
+        print(f"Day: {weekdays[row['day'] - 1]}, Goal: {daily_sum[row['day'] - 1]["goal"]}")
+
+    for i in range(0, 7):
+        print(f"______Day: {weekdays[i]}, Goal: {daily_sum[i]["goal"]}")
+        daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
+
+    productivity_data = daily_sum
+    for row in productivity_data:
+        print(row)
+
+    # Extracting labels and values for each day
+    days = [f"{weekdays[i]}" for i in range(len(productivity_data))]
+    started_values = [day['started'] for day in productivity_data]
+    done_values = [day['done'] for day in productivity_data]
+    goal_values = [day['goal'] for day in productivity_data]
+
+    plt.figure().set_figwidth(10)
+    plt.figure().set_figheight(10)
+
+    # Set up the figure and axes
+    fig, ax = plt.subplots()
+
+    # Bar width
+    bar_width = 0.25
+
+    # Set the positions of bars on X-axis
+    r1 = np.arange(len(days))
+    r2 = [x + bar_width for x in r1]
+    r3 = [x + bar_width for x in r2]
+
+    # Plotting the bars
+    plt.bar(r1, started_values, color='blue', width=bar_width, edgecolor='grey', label='Started')
+    plt.bar(r2, done_values, color='green', width=bar_width, edgecolor='grey', label='Done')
+    plt.bar(r3, goal_values, color='orange', width=bar_width, edgecolor='grey', label='Goal')
+
+    # Adding labels
+    plt.xlabel('Days', fontweight='bold', fontsize=15)
+    plt.xticks([r + bar_width for r in range(len(days))], days)
+    plt.xticks(rotation=20, ha='right')
+
+    # Adding legend
+    plt.legend()
+
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    img_buf.seek(0)
+
+    # Clear the plot to avoid it being shown in the server
+    plt.clf()
+
+    return send_file(img_buf, mimetype='image/png')
+
+@app.route("/check_for_week_overview", methods=["POST"])
+@login_required
+def check_for_week_overview():
+    
+    day = int(request.json['day'])
+    month = int(request.json['month'])
+    year = int(request.json['year'])
+    weekday = int(request.json['weekday'])
+
+    if weekday != 6:
+        return jsonify([1]) # not a sunday
+
+    
+
+    date = datetime(year, month, day)
+
+    # Get the ISO week number
+    iso_week_number = date.isocalendar()[1] + 1
+
+    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
+    
+    if len(weeks) == 0:
+        return jsonify([2]) # week not on record
+
+    return jsonify([0]) # checks out
+
+
+@app.route("/check_for_day_overview", methods=["POST"])
+@login_required
+def check_for_day_overview():
+    
+    day = int(request.json['day'])
+    month = int(request.json['month'])
+    year = int(request.json['year'])
+    weekday = int(request.json['weekday'])
+    
+    
+    print(weekday)
+    date = datetime(year, month, day)
+
+    # Get the ISO week number
+    iso_week_number = date.isocalendar()[1]
+
+    if (weekday == 6):
+        iso_week_number += 1
+    
+
+    print(iso_week_number)
+
+    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
+    print(weeks)
+
+    if len(weeks) == 0:
+        print("Day not on record")
+        return jsonify([1]) # week not on record
+
+    return jsonify([0]) # checks out
+
+
+@app.route("/visualize_day_overview", methods=["POST"])
+@login_required
+def visualize_day_overview():
+    print("Request received")
+
+    day = int(request.json['day'])
+    month = int(request.json['month'])
+    year = int(request.json['year'])
+    task_id = int(request.json['task_id'])
+    weekday = int(request.json['weekday'])
+
+    
+    
+    date = datetime(year, month, day)
+
+    # Get the ISO week number
+    week = date.isocalendar()[1]
+
+    # we need to map datetime's weekday format to out own so
+    # 0 -> 2, 1 -> 3, ... 6 
+    if weekday == 6:
+        weekday = 1
+    else:
+        weekday += 2
+
+    if (weekday == 6):
+        week += 1
+
+    print(f"Day: {weekday}, Month: {month}, Year: {year}, Week: {week}")
+    # The day column in the table is actually the weekday, my bad. So what we need to pass on to the query is the weekday + 1
+    # :/
+
+    if task_id == 0:
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day = ?", session['user_id'], year, week, weekday)
+    else:
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day =? AND task_id = ", session['user_id'], year, week, weekday, task_id)
+    
+    
+    hourly_progress = []
+    total_progress = 0
+
+    for i in range(0, 24):
+        hourly_progress.append({})
+        hourly_progress[i]['progress'] = 0
+    
+    last_hour_set = 0
+
+    def fill_in(start, end, progress):
+        for
+
+    for row in data:
+        if row['hour'] - last_hour_set > 1:
+            fill_in(last_hour_set, row['hour'], total_progress)
+        if row['progress'] == "started":
+            total_progress += 1
+            hourly_progress[row['hour']]['progress'] += total_progress
+            
+            print(row['hour'])
+        elif row['progress'] == "done":
+            total_progress += 2
+            hourly_progress[row['hour']]['progress'] += total_progress
+            print(row['hour'])
+        else:
+            hourly_progress[row['hour']]['progress'] = total_progress
+    print(data)
+    print(len(hourly_progress))
+    hours = [f"{i}:00" for i in range(len(hourly_progress))]
+    progress = [hour['progress'] for hour in hourly_progress]
+
+    plt.figure().set_figwidth(15)
+    plt.plot(hours, progress, color="blue")
+    plt.xlabel("Hours")
+    plt.ylabel("Progress")
+    plt.xticks(rotation=45, ha='right')
+    plt.title("Progress by hour")
+    
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    img_buf.seek(0)
+
+    # Clear the plot to avoid it being shown in the server
+    plt.clf()
+
+    return send_file(img_buf, mimetype='image/png')
 
 @app.route("/logout")
 def logout():

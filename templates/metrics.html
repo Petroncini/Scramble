@@ -1,0 +1,310 @@
+{% extends "layout.html" %}
+
+{% block script %}
+    <script>
+        document.addEventListener("DOMContentLoaded", async() => {
+            let checkbox = document.getElementById('overwrite_checkbox')
+
+            checkbox.addEventListener("change", function() {
+                submit_div = document.getElementById('submit_div')
+    
+                if (checkbox.checked == true){
+                    submit_div.style.display = "block"
+    
+                } else if (checkbox.checked == false){
+                    submit_div.style.display = "none"
+                }
+            })
+        })
+        
+
+
+        function check_date_overlap(){
+            date = new Date(document.querySelector("#sunday").value);
+            year = date.getFullYear();
+            month = date.getMonth() + 1;
+            day = date.getDate() + 1;
+            weekday = date.getDay();
+            
+
+            
+
+            (async() => {
+                const response = await fetch('/check_date_overlap', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    day: day,
+                    month: month,
+                    year: year,
+                    weekday: weekday
+                    })
+                });
+                const update_response = await response.json();
+                error_code = update_response[0]
+
+                if (error_code == 0){
+                    submit_div = document.getElementById('submit_div')
+                    error_div = document.getElementById('error_div')
+                    error_div.style.display = "none"
+                    submit_div.style.display = "block"
+
+                } else if (error_code == 1){
+                    error_div = document.getElementById('error_div')
+                    error_message = document.getElementById('error_message')
+                    error_message.innerHTML = "Date is not a sunday"
+                    error_div.style.display = "block"
+
+                } else if (error_code == 2){
+                    error_div = document.getElementById('error_div')
+                    overwrite_div = document.getElementById('overwrite_div')
+                    error_message = document.getElementById('error_message')
+                    overwrite_checkbox = document.getElementById('overwrite_checkbox')
+
+                    error_message.innerHTML = "Week overlaps with saved data. Proceed?"
+                    error_div.style.display = "block"
+                    overwrite_div.style.display = "block"
+                    overwrite_checkbox.checked = false
+                }
+
+                console.log(update_response)
+            })();
+        }
+
+        function check_for_week_overview(n){
+            date = new Date(document.querySelector(`#visualization_date_${n}`).value);
+            year = date.getFullYear();
+            month = date.getMonth() + 1;
+            day = date.getDate() + 1;
+            weekday = date.getDay();
+            
+            
+
+            (async() => {
+                const response = await fetch('/check_for_week_overview', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    day: day,
+                    month: month,
+                    year: year,
+                    weekday: weekday
+                    })
+                });
+                const update_response = await response.json();
+                error_code = update_response[0]
+
+                if (error_code == 0){
+                    error_div = document.getElementById(`error_div_${n}`)
+                    submit_div = document.getElementById(`submit_div_${n}`)
+                    error_div.style.display = "none"
+                    submit_div.style.display = "block"
+
+                } else if (error_code == 1){
+                    error_div = document.getElementById(`error_div_${n}`)
+                    error_message = document.getElementById(`error_message_${n}`)
+                    submit_div = document.getElementById(`submit_div_${n}`)
+                    error_message.innerHTML = "Date is not a sunday"
+                    error_div.style.display = "block"
+                    submit_div.style.display = "none"
+
+                } else if (error_code == 2) {
+                    error_div = document.getElementById(`error_div_${n}`)
+                    submit_div = document.getElementById(`submit_div_${n}`)
+                    error_message = document.getElementById(`error_message_${n}`)
+                    error_message.innerHTML = "Week not on record"
+                    error_div.style.display = "block"
+                    submit_div.style.display = "none"
+                }
+            })();
+
+            
+        }
+
+        function submit_for_visualization(n, type){
+                visualization_date = date = new Date(document.querySelector(`#visualization_date_${n}`).value);
+                console.log(visualization_date)
+                year = date.getFullYear();
+                month = date.getMonth() + 1;
+                day = date.getDate() + 1;
+                weekday = date.getDay();
+                
+                console.log(year +" "+ month +" "+ day);
+                if (type == 0){
+                    (async() => {
+                        console.log(day)
+                        const response = await fetch('/visualize_week_overview', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            day: day,
+                            month: month,
+                            year: year,
+                            task_id: 0
+                            })
+                        });
+
+                        if (response.ok) {
+                            // Get the image URL from the response
+                            const imageUrl = URL.createObjectURL(await response.blob());
+                    
+                            // Create an <img> element and append it to a container (replace 'containerId' with your actual container ID)
+                            const imgElement = document.getElementById("week_overview_img")
+                            imgElement.src = imageUrl;
+                            //document.getElementById('containerId').appendChild(imgElement);
+                        } else {
+                            console.error('Error fetching image');
+                        }
+                    })();
+                } else if (type == 1) {
+                    (async() => {
+                        console.log(day)
+                        const response = await fetch('/visualize_day_overview', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            day: day,
+                            month: month,
+                            year: year,
+                            weekday: weekday,
+                            task_id: 0
+                            })
+                        });
+
+                        if (response.ok) {
+                            // Get the image URL from the response
+                            const imageUrl = URL.createObjectURL(await response.blob());
+                    
+                            // Create an <img> element and append it to a container (replace 'containerId' with your actual container ID)
+                            const imgElement = document.getElementById("day_overview_img")
+                            imgElement.src = imageUrl;
+                            //document.getElementById('containerId').appendChild(imgElement);
+                        } else {
+                            console.error('Error fetching image');
+                        }
+                    })();
+                }
+        }
+
+        function check_for_day_overview(n){
+            date = new Date(document.querySelector(`#visualization_date_${n}`).value);
+            year = date.getFullYear();
+            month = date.getMonth() + 1;
+            day = date.getDate() + 1;
+            weekday = date.getDay();
+            
+            
+
+            (async() => {
+                const response = await fetch('/check_for_day_overview', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    day: day,
+                    month: month,
+                    year: year,
+                    weekday: weekday
+                    })
+                });
+                const update_response = await response.json();
+                error_code = update_response[0]
+                console.log(error_code)
+
+                if (error_code == 0){
+                    error_div = document.getElementById(`error_div_${n}`)
+                    submit_div = document.getElementById(`submit_div_${n}`)
+                    error_div.style.display = "none"
+                    submit_div.style.display = "block"
+
+                } else if (error_code == 1){
+                    error_div = document.getElementById(`error_div_${n}`)
+                    error_message = document.getElementById(`error_message_${n}`)
+                    submit_div = document.getElementById(`submit_div_${n}`)
+                    error_message.innerHTML = "Date is not on record"
+                    error_div.style.display = "block"
+                    submit_div.style.display = "none"
+
+                }
+            })();
+
+            
+        }
+    </script>
+    
+{% endblock %}
+
+{% block main %}
+    <title>Metrics</title>
+
+    <h2 style="margin-bottom: 50px">Upload week data</h2>
+    <form action="/upload_week_data" method="post">
+        <label for="sunday">Sunday date</label>
+        <input type="date" id="sunday" name="sunday_date"  min="2024-01-01" value="2024-01-01" onfocus="blur()" onchange="check_date_overlap()"/>
+        <div id="error_div" style="margin-top: 10px; display: none">
+            <p style="color: red" id="error_message"></p>
+            <div id="overwrite_div"  style="margin-top: 10px; display: none">   
+                <label for="overwrite_checkbox">Overwrite saved data</label>
+                <input id = "overwrite_checkbox" name="overwrite" type="checkbox" checked>
+            </div>
+        </div>
+        <div id="submit_div" style="margin-top: 20px; display: none">
+            <button  class="btn btn-primary"  type="submit">Save data</button>
+        </div>
+    </form>
+
+    <h2 style="margin-top: 50px">Week overview</h2>
+
+    
+    
+        <label for="sunday">Sunday date</label>
+        <input type="date" id="visualization_date_2" name="week_overview_date"  min="2024-01-01" value="2024-01-01" onfocus="blur()" onchange="check_for_week_overview(2)"/>
+
+        <div id="error_div_2" style="margin-top: 10px; display: none">
+            <p style="color: red" id="error_message_2"></p>
+        </div>
+        <div id="submit_div_2" style="margin-top: 20px; display: none">
+            <button  class="btn btn-primary"  type="submit" onclick="submit_for_visualization(2, 0)">View data</button>
+        </div>
+        <img id="week_overview_img">
+    
+
+        <h2 style="margin-top: 50px">Day overview</h2>
+
+    
+    
+        <label for="sunday">Date</label>
+        <input type="date" id="visualization_date_3" name="week_overview_date"  min="2024-01-01" value="2024-01-01" onfocus="blur()" onchange="check_for_day_overview(3)"/>
+
+        <div id="error_div_3" style="margin-top: 10px; display: none">
+            <p style="color: red" id="error_message_3"></p>
+        </div>
+        <div id="submit_div_3" style="margin-top: 20px; display: none">
+            <button  class="btn btn-primary"  type="submit" onclick="submit_for_visualization(3, 1)">View data</button>
+        </div>
+        <img id="day_overview_img">
+    
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p id="error">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+{% endblock %}
