@@ -9,9 +9,15 @@ from datetime import datetime
 from helpers import apology, login_required, lookup, usd
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
+
+logging.getLogger('matplotlib.font_manager').disabled = True
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
 
 # Configure application
 app = Flask(__name__)
+
 
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
@@ -593,15 +599,20 @@ def visualize_day_overview():
     
     last_hour_set = 0
 
+    #maybe add the option to do cumulative or hour by hour
+
     def fill_in(start, end, progress):
-        for
+        for i in range(start, end):
+            hourly_progress[i]['progress'] = progress
 
     for row in data:
         if row['hour'] - last_hour_set > 1:
             fill_in(last_hour_set, row['hour'], total_progress)
+
         if row['progress'] == "started":
             total_progress += 1
             hourly_progress[row['hour']]['progress'] += total_progress
+            
             
             print(row['hour'])
         elif row['progress'] == "done":
@@ -610,6 +621,11 @@ def visualize_day_overview():
             print(row['hour'])
         else:
             hourly_progress[row['hour']]['progress'] = total_progress
+        last_hour_set = row['hour']
+
+    if data[len(data) - 1]['hour'] != 23:
+        fill_in(last_hour_set, 24, total_progress)
+
     print(data)
     print(len(hourly_progress))
     hours = [f"{i}:00" for i in range(len(hourly_progress))]
