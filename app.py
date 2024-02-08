@@ -441,7 +441,7 @@ def visualize_week_overview():
             daily_sum[row['day'] - 1]["done"] += 1
 
         daily_sum[row['day'] - 1]["goal"] += 1
-        print(f"Day: {weekdays[row['day'] - 1]}, Goal: {daily_sum[row['day'] - 1]["goal"]}")
+        
 
     for i in range(0, 7):
         print(f"______Day: {weekdays[i]}, Goal: {daily_sum[i]["goal"]}")
