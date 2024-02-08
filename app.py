@@ -154,7 +154,7 @@ def register():
                     values += f"('{new_id}', '{day}', '{hour}'), "
 
         query = "INSERT INTO schedule (user_id, day, hour) VALUES " + values
-        print(query)
+        
         db.execute(query)
         flash("Registration succesfull")
 
@@ -229,7 +229,7 @@ def get_schedule():
     
     user_schedule = db.execute("SELECT * FROM schedule WHERE user_id = ? ORDER BY day, hour", session['user_id'])
 
-    print(user_schedule)
+    
 
     days, hours = 7, 24
     schedule = [[{'task_id': None, 'progress': "not_started"} for x in range(days)] for y in range(hours)] 
@@ -263,11 +263,11 @@ def update_schedule():
    
     if task_fixed == "fixed":
         db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
-        print(f"UPDATE schedule SET task_id = {task_id}, progress = 'done' WHERE (user_id = {session['user_id']}) AND (day = {day}) and (hour = {hour})")
+        
     
     else:
         db.execute("UPDATE schedule SET task_id = ?, progress = 'not_started' WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
-        print(f"UPDATE schedule SET task_id = {task_id}, progress = 'not_started' WHERE (user_id = {session['user_id']}) AND (day = {day}) and (hour = {hour})")
+        
 
     return ["Ok"]
 
@@ -430,7 +430,7 @@ def visualize_week_overview():
     month = int(request.json['month'])
     year = int(request.json['year'])
     task_id = int(request.json['task_id'])
-    print(task_id)
+    
     
 
     date = datetime(year, month, day)
@@ -447,7 +447,7 @@ def visualize_week_overview():
     
 
     weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    print(data)
+    
 
     daily_sum = []
     for i in range(0, 7):
@@ -470,7 +470,7 @@ def visualize_week_overview():
 
         daily_sum[row['day'] - 1]["goal"] += 1
         
-    print(daily_sum)
+   
     for i in range(0, 7): #goal might actually be zero
         if daily_sum[i]['goal'] != 0:
             daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
@@ -592,7 +592,7 @@ def visualize_day_overview():
     task_id = int(request.json['task_id'])
     weekday = int(request.json['weekday'])
 
-    print(f"Task id: {task_id}")
+    
 
     
     
@@ -601,7 +601,7 @@ def visualize_day_overview():
     # Get the ISO week number
     week = date.isocalendar()[1] 
 
-    print(f"Year: {year}, Month: {month}, Week: {week}, Day: {day}, Weekday: {weekday}")
+  
 
     # we need to map datetime's weekday format to out own so
     # 0 -> 2, 1 -> 3, ... 6 
@@ -618,14 +618,14 @@ def visualize_day_overview():
     
     # The day column in the table is actually the weekday, my bad. So what we need to pass on to the query is the weekday + 1
     # :/
-    print(f"Year: {year}, Month: {month}, Week: {week}, Day: {day}, Weekday: {weekday}")
+    
 
     if task_id == 0:
         data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day = ? ORDER BY day, hour", session['user_id'], year, week, weekday)
     else:
         data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day =? AND task_id = ? ORDER BY day, hour", session['user_id'], year, week, weekday, task_id)
     
-    print(data)
+    
     
     hourly_progress = []
     total_progress = 0
@@ -660,8 +660,7 @@ def visualize_day_overview():
             hourly_progress[row['hour']]['progress'] = total_progress
         last_hour_set = row['hour']
 
-    print(data) 
-    print(len(data))
+   
 
     if data[len(data) - 1]['hour'] != 23:
         fill_in(last_hour_set, 24, total_progress)
@@ -690,9 +689,9 @@ def visualize_day_overview():
 @login_required
 def visualize_history_overview():
     
-    print("HEHHHEHEHHEHHEHEEEEEEYYYYYYYY")
+    
     task_id = int(request.json['task_id'])
-    print(f"TASK ID: {task_id}")
+   
     
 
     if task_id == 0:
@@ -709,27 +708,27 @@ def visualize_history_overview():
 
     for row in data: # somethign wrong here
 
-        print(row)
+        
         if row['year'] != prev_year or row['week'] != prev_week or row['day'] != prev_day:
             
             prev_datetime = datetime.fromisocalendar(prev_year, prev_week, prev_day)
-            print(prev_datetime)
+           
 
             prev_year = row['year']
             prev_week = row['week']
             prev_day = row['day']
 
             new_datetime =  datetime.fromisocalendar(prev_year, prev_week, prev_day)
-            print(new_datetime)
+            
             
             time_delta = new_datetime - prev_datetime
             days_difference = time_delta.days
             # Parse the ISO week date string and convert it to a datetime object
-            print(days_difference)
+           
             day_num += days_difference
 
 
-    print(day_num)
+  
     daily_sum = []
 
     for i in range(0, day_num):
@@ -770,11 +769,11 @@ def visualize_history_overview():
          # row day is not a useful index becaue it repeats
 
     for i in range(0, day_num):
-        print(i)
+        
         if daily_sum[i]['goal'] != 0:
             daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
         else:
-            print("____ZEROING____")
+            
             daily_sum[i]['percentage_complete'] = -1
         
 
@@ -829,7 +828,7 @@ def visualize_history_overview():
 
     return send_file(img_buf, mimetype='image/png')
 
-    print(daily_sum)
+    
     
 
 
