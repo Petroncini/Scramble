@@ -444,7 +444,6 @@ def visualize_week_overview():
         
 
     for i in range(0, 7):
-        print(f"______Day: {weekdays[i]}, Goal: {daily_sum[i]["goal"]}")
         daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
 
     productivity_data = daily_sum
