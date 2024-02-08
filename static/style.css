@@ -9,3 +9,10 @@
 .dark-background {
     color: white;  /* Text color */
 }
+
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 99%;
+  }

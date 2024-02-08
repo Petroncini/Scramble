@@ -10,6 +10,7 @@ from helpers import apology, login_required, lookup, usd
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
+from dateutil.parser import parse
 
 logging.getLogger('matplotlib.font_manager').disabled = True
 pil_logger = logging.getLogger('PIL')
@@ -22,8 +23,26 @@ app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
+#db = SQL("sqlite:///schedule.db")
+db = SQL("postgresql://scramble_db_user:NIhnBoM5P7INOwWuGoA0Lp0PcyGW67Qi@dpg-cn2ick7109ks73974sbg-a/scramble_db")
 
-db = SQL("sqlite:///schedule.db")
+def days_elapsed(start_date, end_date):
+    # Calculate the timedelta between the two datetime objects
+    delta = datetime(end_date) - datetime(start_date)
+
+    # Access the days attribute of the timedelta object
+    days = delta.days
+
+    return days
+
+def generate_datetime(year, iso_week, iso_weekday):
+    # Create a string in the format 'YYYY-Www-D', where 'w' is the week number and 'D' is the day of the week
+    iso_date_string = f'{year}-W{iso_week}-{iso_weekday}'
+
+    # Parse the ISO week date string and convert it to a datetime object
+    dt_object = parse(iso_date_string)
+
+    return dt_object
 
 @app.route("/", methods=["GET", "POST"])
 @login_required
@@ -135,6 +154,7 @@ def register():
                     values += f"('{new_id}', '{day}', '{hour}'), "
 
         query = "INSERT INTO schedule (user_id, day, hour) VALUES " + values
+        print(query)
         db.execute(query)
         flash("Registration succesfull")
 
@@ -164,10 +184,6 @@ def tasks():
         action = request.form.get("action")
         task_id = request.form.get("task_id")
         task_fixed = request.form.get("task_fixed")
-
-        print("HEllOOOO")
-        print(request.form)
-        print(task_fixed)
 
         if not task_name:
             flash("Task name required")
@@ -211,19 +227,19 @@ def get_tasks():
 @login_required
 def get_schedule():
     
-    user_schedule = db.execute("SELECT * FROM schedule WHERE user_id = ?", session['user_id'])
+    user_schedule = db.execute("SELECT * FROM schedule WHERE user_id = ? ORDER BY day, hour", session['user_id'])
 
-    
+    print(user_schedule)
+
     days, hours = 7, 24
     schedule = [[{'task_id': None, 'progress': "not_started"} for x in range(days)] for y in range(hours)] 
 
-    # print(schedule)
-    cell = 0
+ 
+    cell = 0 # something wrong here
 
     for day in range(0, 7):
         for hour in range(0, 24):
-            # print(f"day: {day}, hour: {hour}, cell: {cell}")
-            # print(f"Schedule| day: {user_schedule[cell]['day']}, hour: {user_schedule[cell]['hour']}")
+  
             schedule[hour][day]['task_id'] = user_schedule[cell]['task_id']
             schedule[hour][day]['progress'] = user_schedule[cell]['progress']
             cell += 1
@@ -233,31 +249,32 @@ def get_schedule():
 @app.route("/update_schedule", methods=["POST"])
 @login_required
 def update_schedule():
-    print("hello")
-    print(request.json)
+   
     
     task_id = request.json.get("task_id")
     hour = request.json.get("hour")
     day = request.json.get("day")
-    print(task_id)
+  
 
     task = db.execute("SELECT fixed FROM tasks WHERE task_id = ?", task_id)
     task_fixed = task[0]['fixed']
-    print(task_fixed)
+    
 
-    # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AMD hour = {hour} AND day = {day}")
+   
     if task_fixed == "fixed":
         db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
+        print(f"UPDATE schedule SET task_id = {task_id}, progress = 'done' WHERE (user_id = {session['user_id']}) AND (day = {day}) and (hour = {hour})")
     
     else:
         db.execute("UPDATE schedule SET task_id = ?, progress = 'not_started' WHERE user_id = ? AND hour = ? AND day = ?", task_id, session['user_id'], hour, day)
+        print(f"UPDATE schedule SET task_id = {task_id}, progress = 'not_started' WHERE (user_id = {session['user_id']}) AND (day = {day}) and (hour = {hour})")
 
     return ["Ok"]
 
 @app.route("/bulk_set", methods=["POST"])
 @login_required
 def bulk_set():
-    print(request.form)
+  
     start = request.form.get("start")
     end = request.form.get("end")
     task_id = request.form.get("task_id")
@@ -268,11 +285,11 @@ def bulk_set():
         return redirect("/")
 
     if not start or not end or int(end) < int(start):
-        print("Incorrect time")
+
         flash("Incorrect time")
         return redirect("/")
     
-    task = db.execute("SELECT fixed FROM tasks WHERE task_id = ?", task_id)
+    task = db.execute("SELECT fixed FROM tasks WHERE task_id = %s", task_id)
     task_fixed = task[0]['fixed']
 
     days = {}
@@ -282,33 +299,31 @@ def bulk_set():
         else:
             days[i] = 0
         
-    print(days)
+  
 
     start = int(start)
     end = int(end)
 
     if task_fixed == "not_fixed":
-        for day in range(1, 8):
-            if start != end:
-                for hour in range(start, end + 1):
-                    if days[day] == 1:
-                        # print(f"Day: {day}, Hour: {hour}")
-                        # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AND day = {day} and hour = {hour}")
-                        db.execute("UPDATE schedule SET task_id = ? WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, hour)
-            else:
-
-                db.execute("UPDATE schedule SET task_id = ? WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, start)
+        progress = 'not_started'
     else:
-        for day in range(1, 8):
-            if start != end:
-                for hour in range(start, end + 1):
-                    if days[day] == 1:
-                        # print(f"Day: {day}, Hour: {hour}")
-                        # print(f"UPDATE schedule SET task_id = {task_id} WHERE user_id = {session['user_id']} AND day = {day} and hour = {hour}")
-                        db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, hour)
-            else:
+        progress = 'done'
 
-                db.execute("UPDATE schedule SET task_id = ?, progress = 'done' WHERE user_id = ? AND day = ? and hour = ?", task_id, session['user_id'], day, start)
+    
+    if start != end: # more than one hour block
+        db.execute(
+            "UPDATE schedule SET task_id = %s, progress = %s WHERE user_id = %s AND day IN (1, 2, 3, 4, 5, 6, 7) AND hour BETWEEN %s AND %s",
+            task_id, progress, session['user_id'], start, end
+        )
+        
+    else:
+        db.execute(
+            "UPDATE schedule SET task_id = %s, progress = %s WHERE user_id = %s AND day IN (1, 2, 3, 4, 5, 6, 7) AND hour = %s",
+            task_id, progress, session['user_id'], start
+            )
+            
+    
+            
 
 
     return redirect("/")
@@ -321,7 +336,7 @@ def update_progress():
     radio_name = request.form.get("radio_name")
     progress = request.form.get(radio_name)
 
-    print(f"Hour: {hour}, day: {day}, radio_name: {radio_name}, progress: {progress}")
+    
 
     db.execute("UPDATE schedule SET progress = ? WHERE user_id = ? AND hour = ? AND day = ?", progress, session['user_id'], hour, day)
 
@@ -331,7 +346,18 @@ def update_progress():
 @login_required
 def metrics():
     if request.method == "GET":
-        return render_template("metrics.html")
+        user_tasks = db.execute("SELECT * FROM tasks WHERE user_id = ?", session['user_id'])
+        tasks = []
+
+        for row in user_tasks:
+            task = {}
+            task['task_id'] = row['task_id']
+            task['name'] = row['name']
+            task['color'] = row['color']
+            task['fixed'] = row['fixed']
+            tasks.append(task)
+
+        return render_template("metrics.html", tasks=tasks)
     
 
 @app.route("/check_date_overlap", methods=["POST"])
@@ -398,12 +424,13 @@ def upload_week_data():
 @app.route("/visualize_week_overview", methods=["POST"])
 @login_required
 def visualize_week_overview():
-    print("Request received")
+    
 
     day = int(request.json['day'])
     month = int(request.json['month'])
     year = int(request.json['year'])
     task_id = int(request.json['task_id'])
+    print(task_id)
     
 
     date = datetime(year, month, day)
@@ -411,15 +438,16 @@ def visualize_week_overview():
     # Get the ISO week number
     week = date.isocalendar()[1] + 1
 
-    print(f"Day: {day}, Month: {month}, Year: {year}, Week: {week}")
+   
 
     if task_id == 0:
         data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, week)
     else:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND task_id = ", session['user_id'], year, week, task_id)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND task_id = ?", session['user_id'], year, week, task_id)
     
 
     weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    print(data)
 
     daily_sum = []
     for i in range(0, 7):
@@ -442,13 +470,15 @@ def visualize_week_overview():
 
         daily_sum[row['day'] - 1]["goal"] += 1
         
-
-    for i in range(0, 7):
-        daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
+    print(daily_sum)
+    for i in range(0, 7): #goal might actually be zero
+        if daily_sum[i]['goal'] != 0:
+            daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
+        else:
+            daily_sum[i]['percentage_complete'] = 1
 
     productivity_data = daily_sum
-    for row in productivity_data:
-        print(row)
+    
 
     # Extracting labels and values for each day
     days = [f"{weekdays[i]}" for i in range(len(productivity_data))]
@@ -507,6 +537,7 @@ def check_for_week_overview():
     
 
     date = datetime(year, month, day)
+    
 
     # Get the ISO week number
     iso_week_number = date.isocalendar()[1] + 1
@@ -529,7 +560,7 @@ def check_for_day_overview():
     weekday = int(request.json['weekday'])
     
     
-    print(weekday)
+    
     date = datetime(year, month, day)
 
     # Get the ISO week number
@@ -539,14 +570,13 @@ def check_for_day_overview():
         iso_week_number += 1
     
 
-    print(iso_week_number)
+    
 
     weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
-    print(weeks)
+    
 
     if len(weeks) == 0:
-        print("Day not on record")
-        return jsonify([1]) # week not on record
+        return jsonify([2]) # week not on record
 
     return jsonify([0]) # checks out
 
@@ -554,7 +584,7 @@ def check_for_day_overview():
 @app.route("/visualize_day_overview", methods=["POST"])
 @login_required
 def visualize_day_overview():
-    print("Request received")
+    
 
     day = int(request.json['day'])
     month = int(request.json['month'])
@@ -562,32 +592,40 @@ def visualize_day_overview():
     task_id = int(request.json['task_id'])
     weekday = int(request.json['weekday'])
 
+    print(f"Task id: {task_id}")
+
     
     
     date = datetime(year, month, day)
 
     # Get the ISO week number
-    week = date.isocalendar()[1]
+    week = date.isocalendar()[1] 
+
+    print(f"Year: {year}, Month: {month}, Week: {week}, Day: {day}, Weekday: {weekday}")
 
     # we need to map datetime's weekday format to out own so
     # 0 -> 2, 1 -> 3, ... 6 
+    if (weekday == 6):
+        week += 1
+
+
     if weekday == 6:
         weekday = 1
     else:
         weekday += 2
 
-    if (weekday == 6):
-        week += 1
-
-    print(f"Day: {weekday}, Month: {month}, Year: {year}, Week: {week}")
+   
+    
     # The day column in the table is actually the weekday, my bad. So what we need to pass on to the query is the weekday + 1
     # :/
+    print(f"Year: {year}, Month: {month}, Week: {week}, Day: {day}, Weekday: {weekday}")
 
     if task_id == 0:
         data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day = ?", session['user_id'], year, week, weekday)
     else:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day =? AND task_id = ", session['user_id'], year, week, weekday, task_id)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day =? AND task_id = ?", session['user_id'], year, week, weekday, task_id)
     
+    print(data)
     
     hourly_progress = []
     total_progress = 0
@@ -613,20 +651,22 @@ def visualize_day_overview():
             hourly_progress[row['hour']]['progress'] += total_progress
             
             
-            print(row['hour'])
+            
         elif row['progress'] == "done":
             total_progress += 2
             hourly_progress[row['hour']]['progress'] += total_progress
-            print(row['hour'])
+            
         else:
             hourly_progress[row['hour']]['progress'] = total_progress
         last_hour_set = row['hour']
 
+    print(data) 
+    print(len(data))
+
     if data[len(data) - 1]['hour'] != 23:
         fill_in(last_hour_set, 24, total_progress)
 
-    print(data)
-    print(len(hourly_progress))
+    
     hours = [f"{i}:00" for i in range(len(hourly_progress))]
     progress = [hour['progress'] for hour in hourly_progress]
 
@@ -645,6 +685,153 @@ def visualize_day_overview():
     plt.clf()
 
     return send_file(img_buf, mimetype='image/png')
+
+@app.route("/visualize_history_overview", methods=["POST"])
+@login_required
+def visualize_history_overview():
+    
+    print("HEHHHEHEHHEHHEHEEEEEEYYYYYYYY")
+    task_id = int(request.json['task_id'])
+    print(f"TASK ID: {task_id}")
+    
+
+    if task_id == 0:
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ?", session['user_id'])
+    else:
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND task_id = ?", session['user_id'], task_id)
+    
+    #we need to count the number of days
+    prev_year = data[0]['year']
+    prev_week = data[0]['week']
+    prev_day = data[0]['day']
+
+    day_num = 1
+
+    for row in data: # somethign wrong here
+
+        print(row)
+        if row['year'] != prev_year or row['week'] != prev_week or row['day'] != prev_day:
+            
+            prev_datetime = datetime.fromisocalendar(prev_year, prev_week, prev_day)
+            print(prev_datetime)
+
+            prev_year = row['year']
+            prev_week = row['week']
+            prev_day = row['day']
+
+            new_datetime =  datetime.fromisocalendar(prev_year, prev_week, prev_day)
+            print(new_datetime)
+            
+            time_delta = new_datetime - prev_datetime
+            days_difference = time_delta.days
+            # Parse the ISO week date string and convert it to a datetime object
+            print(days_difference)
+            day_num += days_difference
+
+
+    print(day_num)
+    daily_sum = []
+
+    for i in range(0, day_num):
+        daily_sum.append({})
+        daily_sum[i]['not_started'] = 0
+        daily_sum[i]['started'] = 0
+        daily_sum[i]['done'] = 0
+        daily_sum[i]['goal'] = 0
+
+    row_index = 0
+    prev_year = data[0]['year']
+    prev_week = data[0]['week']
+    prev_day = data[0]['day']
+
+    
+    for row in data:
+        if row['year'] != prev_year or row['week'] != prev_week or row['day'] != prev_day:
+            row_index += 1
+            prev_year = row['year']
+            prev_week = row['week']
+            prev_day = row['day']
+       
+        if row['progress'] == "not_started":
+            daily_sum[row_index]["not_started"] += 1
+
+        elif row['progress'] == "started":
+            daily_sum[row_index]["started"] += 1
+
+        elif row['progress'] == "done":
+            daily_sum[row_index]["done"] += 1
+
+     
+        daily_sum[row_index]["goal"] += 1
+        
+
+
+
+         # row day is not a useful index becaue it repeats
+
+    for i in range(0, day_num):
+        print(i)
+        if daily_sum[i]['goal'] != 0:
+            daily_sum[i]['percentage_complete'] = daily_sum[i]['done'] / daily_sum[i]['goal']
+        else:
+            print("____ZEROING____")
+            daily_sum[i]['percentage_complete'] = -1
+        
+
+    productivity_data = daily_sum
+
+    # Extracting labels and values for each day
+    days = [f"{i}" for i in range(1, len(productivity_data) + 1)]
+    started_values = [day['started'] for day in productivity_data]
+    done_values = [day['done'] for day in productivity_data]
+    goal_values = [day['goal'] for day in productivity_data]
+    percentage_complete = [day['percentage_complete'] for day in productivity_data]
+
+    plt.figure().set_figwidth(30)
+    plt.figure().set_figheight(10)
+
+    # Set up the figure and axes
+    fig, ax = plt.subplots()
+
+    # Bar width
+    bar_width = 0.25
+
+    # Set the positions of bars on X-axis
+    r1 = np.arange(len(days))
+    r2 = [x + bar_width for x in r1]
+    r3 = [x + bar_width for x in r2]
+
+    # Plotting the bars
+    # plt.bar(r1, started_values, color='blue', width=bar_width, edgecolor='grey', label='Started')
+    # plt.bar(r2, done_values, color='green', width=bar_width, edgecolor='grey', label='Done')
+    # plt.bar(r3, goal_values, color='orange', width=bar_width, edgecolor='grey', label='Goal')
+    plt.figure().set_figheight(10)
+    plt.figure().set_figwidth(20)
+    
+
+    plt.plot(days, percentage_complete, color="green")
+
+    # Adding labels
+    plt.xlabel('Days', fontweight='bold', fontsize=15)
+    plt.xticks([r + bar_width for r in range(len(days))], days)
+    plt.xticks(rotation=20, ha='right')
+    plt.title("Percentage complete by day")
+
+    # Adding legend
+    plt.legend()
+
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    img_buf.seek(0)
+
+    # Clear the plot to avoid it being shown in the server
+    plt.clf()
+
+    return send_file(img_buf, mimetype='image/png')
+
+    print(daily_sum)
+    
+
 
 @app.route("/logout")
 def logout():
