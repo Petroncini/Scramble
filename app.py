@@ -338,7 +338,7 @@ def update_progress():
 
     
 
-    db.execute("UPDATE schedule SET progress = ? WHERE user_id = ? AND hour = ? AND day = ?", progress, session['user_id'], hour, day)
+    db.execute("UPDATE schedule SET progress = ? WHERE user_id = ? AND hour = ? AND day = ? ", progress, session['user_id'], hour, day)
 
     return '', 204
 
@@ -378,7 +378,7 @@ def check_date_overlap():
     # Get the ISO week number
     iso_week_number = date.isocalendar()[1] + 1
 
-    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
+    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ? ORDER BY day, hour", session['user_id'], year, iso_week_number)
     
     if len(weeks) != 0:
         return jsonify([2])
@@ -399,8 +399,8 @@ def upload_week_data():
     year = date_object.year
     week_number = date_object.isocalendar()[1] + 1
 
-    current_schedule = db.execute("SELECT * FROM schedule WHERE user_id = ?", session['user_id'])
-    user_tasks = db.execute("SELECT task_id, fixed FROM tasks WHERE user_id = ?", session['user_id'])
+    current_schedule = db.execute("SELECT * FROM schedule WHERE user_id = ? ORDER BY day, hour", session['user_id'])
+    user_tasks = db.execute("SELECT task_id, fixed FROM tasks WHERE user_id = ? ", session['user_id'])
 
     fixed_tasks = {}
 
@@ -441,9 +441,9 @@ def visualize_week_overview():
    
 
     if task_id == 0:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, week)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? ORDER BY day, hour", session['user_id'], year, week)
     else:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND task_id = ?", session['user_id'], year, week, task_id)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND task_id = ? ORDER BY day, hour", session['user_id'], year, week, task_id)
     
 
     weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -542,7 +542,7 @@ def check_for_week_overview():
     # Get the ISO week number
     iso_week_number = date.isocalendar()[1] + 1
 
-    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
+    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ? ORDER BY day, hour", session['user_id'], year, iso_week_number)
     
     if len(weeks) == 0:
         return jsonify([2]) # week not on record
@@ -572,7 +572,7 @@ def check_for_day_overview():
 
     
 
-    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ?", session['user_id'], year, iso_week_number)
+    weeks = db.execute("SELECT week FROM productivity WHERE user_id = ? AND year = ? AND week = ? ORDER BY day, hour", session['user_id'], year, iso_week_number)
     
 
     if len(weeks) == 0:
@@ -621,9 +621,9 @@ def visualize_day_overview():
     print(f"Year: {year}, Month: {month}, Week: {week}, Day: {day}, Weekday: {weekday}")
 
     if task_id == 0:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day = ?", session['user_id'], year, week, weekday)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day = ? ORDER BY day, hour", session['user_id'], year, week, weekday)
     else:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day =? AND task_id = ?", session['user_id'], year, week, weekday, task_id)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND year = ? AND week = ? AND day =? AND task_id = ? ORDER BY day, hour", session['user_id'], year, week, weekday, task_id)
     
     print(data)
     
@@ -696,9 +696,9 @@ def visualize_history_overview():
     
 
     if task_id == 0:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ?", session['user_id'])
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? ORDER BY day, hour", session['user_id'])
     else:
-        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND task_id = ?", session['user_id'], task_id)
+        data = db.execute("SELECT * FROM productivity WHERE user_id = ? AND task_id = ? ORDER BY day, hour", session['user_id'], task_id)
     
     #we need to count the number of days
     prev_year = data[0]['year']

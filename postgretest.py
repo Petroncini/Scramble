@@ -26,6 +26,6 @@ Session(app)
 
 db = SQL("postgresql://scramble_db_user:NIhnBoM5P7INOwWuGoA0Lp0PcyGW67Qi@dpg-cn2ick7109ks73974sbg-a.oregon-postgres.render.com/scramble_db")
 
-data = db.execute("SELECT* FROM schedule WHERE user_id = 2")
+data = db.execute("SELECT* FROM users")
 
 print(data)
